@@ -95,6 +95,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Date"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
                     android:textColorHint="@color/black"
                     android:textSize="16dp"/>
 
@@ -137,6 +139,7 @@
                     android:id="@+id/iv_image"
                     android:layout_width="200dp"
                     android:layout_height="200dp"
+                    android:background="@drawable/shape_image_view_border"
                     android:scaleType="centerCrop"
                     android:src="@drawable/no_image_available"
                     />
