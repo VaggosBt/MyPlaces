@@ -4,19 +4,24 @@ import android.Manifest
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.RecordingCanvas
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.AndroidException
 import android.view.View
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import com.udemycourses.myplaces.databinding.ActivityAddPlaceBinding
 import java.text.SimpleDateFormat
 import java.util.*
@@ -27,13 +32,28 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
     private val cal = Calendar.getInstance()
     private lateinit var dateSetListener: DatePickerDialog.OnDateSetListener
 
-    private val REQUEST_READ_PERMISSION = 1
+    companion object{
+        private const val CAMERA_PERMISSION_CODE = 1
+        private const val CAMERA_REQUEST_CODE = 2
+    }
 
-    val openGalleryLauncher: ActivityResultLauncher<Intent> =
+    private val openGalleryLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK && result.data != null) {
-                Toast.makeText(this@AddPlaceActivity, "PERMISSION GRANTED", Toast.LENGTH_SHORT).show()
+                //Toast.makeText(this@AddPlaceActivity, "PERMISSION GRANTED", Toast.LENGTH_SHORT).show()
                 //binding?.ivImage?.setImageResource(result.resultCode)
+
+
+                try{
+                    val selectedImageUri = result.data?.data
+                    val inputStream = selectedImageUri?.let { contentResolver.openInputStream(it) }
+                    val imageBitmap = BitmapFactory.decodeStream(inputStream)
+                    binding?.ivImage?.setImageBitmap(imageBitmap)
+                }catch (e: java.lang.RuntimeException){
+                    Toast.makeText(this@AddPlaceActivity,"Something went wrong", Toast.LENGTH_SHORT).show()
+                }catch (t: Throwable){
+                    Toast.makeText(this@AddPlaceActivity,"Something went wrong", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -55,6 +75,19 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                         Toast.makeText(this, "Oops, you just denied the permission.", Toast.LENGTH_SHORT).show()
                     }
                 }
+            }
+        }
+
+    private val requestCameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                // Permission granted, proceed with camera operation
+                Toast.makeText(this, "Camera permission granted", Toast.LENGTH_SHORT).show()
+                val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                startActivityForResult(intent, CAMERA_REQUEST_CODE)
+            } else {
+                // Permission denied, show rationale or disable camera functionality
+                Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -104,11 +137,7 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                         0 -> choosePhotoFromGallery()
 
 
-                        1 -> Toast.makeText(
-                            this@AddPlaceActivity,
-                            "Camera selection coming soon...",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        1 -> capturePhotoFromCamera()
                     }
                 }.show()
             }
@@ -119,6 +148,11 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
 
         requestStoragePermission()
 
+    }
+
+    private fun capturePhotoFromCamera(){
+        //Toast.makeText(this@AddPlaceActivity,"Camera selection coming soon...",Toast.LENGTH_SHORT).show()
+        requestCameraPermission()
     }
 
 
@@ -191,5 +225,49 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                 dialog.dismiss()
             }
         builder.create().show()
+    }
+
+    private fun requestCameraPermission() {
+        when {
+            // Check if permission is already granted
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                // Permission already granted, proceed with camera operation
+               val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                startActivityForResult(intent, CAMERA_REQUEST_CODE)
+            }
+            // Show rationale if permission was previously denied by user
+            ActivityCompat.shouldShowRequestPermissionRationale(
+                this,
+                Manifest.permission.CAMERA
+            ) -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Camera Permission")
+                    .setMessage("This app requires camera permission to take pictures.")
+                    .setPositiveButton("OK") { _, _ ->
+                        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                    .setNegativeButton("Cancel") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .create()
+                    .show()
+            }
+            else -> {
+                // Request permission if it was never requested before
+                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
+    //method to receive the photo taken from the camera intent
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
+            val thumbNail : Bitmap = data!!.extras?.get("data") as Bitmap
+            binding?.ivImage?.setImageBitmap(thumbNail)
+            // Do something with the imageBitmap, such as displaying it in an ImageView
+        }
     }
 }
