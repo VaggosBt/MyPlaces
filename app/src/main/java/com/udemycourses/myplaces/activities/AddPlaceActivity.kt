@@ -1,20 +1,20 @@
-package com.udemycourses.myplaces
+package com.udemycourses.myplaces.activities
 
 import android.Manifest
 import android.app.AlertDialog
 import android.app.DatePickerDialog
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.RecordingCanvas
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
-import android.util.AndroidException
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.ActivityResultLauncher
@@ -23,6 +23,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.udemycourses.myplaces.databinding.ActivityAddPlaceBinding
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -35,9 +39,11 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
     companion object{
         private const val CAMERA_PERMISSION_CODE = 1
         private const val CAMERA_REQUEST_CODE = 2
+        private const val GALLERY = 3
+        private const val IMAGE_DIRECTORY = "MyPlacesImages"
     }
 
-    private val openGalleryLauncher: ActivityResultLauncher<Intent> =
+/*    private val openGalleryLauncher: ActivityResultLauncher<Intent> =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == RESULT_OK && result.data != null) {
                 //Toast.makeText(this@AddPlaceActivity, "PERMISSION GRANTED", Toast.LENGTH_SHORT).show()
@@ -55,7 +61,7 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                     Toast.makeText(this@AddPlaceActivity,"Something went wrong", Toast.LENGTH_SHORT).show()
                 }
             }
-        }
+        }*/
 
     private val requestPermission : ActivityResultLauncher<Array<String>> =
         registerForActivityResult(
@@ -69,7 +75,8 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
 
                     Toast.makeText(this, "Permission granted, now you can read the storage files", Toast.LENGTH_SHORT).show()
                     val pickIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                    openGalleryLauncher.launch(pickIntent)
+                    //openGalleryLauncher.launch(pickIntent)
+                    startActivityForResult(pickIntent, GALLERY)
                 }else{
                     if(permissionName == Manifest.permission.CAMERA){
                         Toast.makeText(this, "Oops, you just denied the permission.", Toast.LENGTH_SHORT).show()
@@ -169,7 +176,8 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                 // Permission already granted
                 val pickIntent =
                     Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                openGalleryLauncher.launch(pickIntent)
+               //openGalleryLauncher.launch(pickIntent)
+                startActivityForResult(pickIntent, GALLERY)
             } else {
                 // Permission not granted, request it
                 val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
@@ -261,13 +269,49 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             }
         }
     }
+
+
+    private fun saveImageToInternalStorage(bitmap: Bitmap): Uri{
+        val wrapper = ContextWrapper(applicationContext)
+        var file = wrapper.getDir(IMAGE_DIRECTORY, Context.MODE_PRIVATE)
+        //whole directory of file
+        file = File(file,"${UUID.randomUUID()}.jpg")
+
+        try{
+            val outStream : OutputStream = FileOutputStream(file)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream)
+            outStream.flush()
+            outStream.close()
+
+        }catch(e: IOException){
+            e.printStackTrace()
+            Toast.makeText(this@AddPlaceActivity,"Something went wrong while saving the file", Toast.LENGTH_SHORT).show()
+        }
+        return Uri.parse(file.absolutePath)
+    }
+
     //method to receive the photo taken from the camera intent
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
             val thumbNail : Bitmap = data!!.extras?.get("data") as Bitmap
+            val saveImageToInternalStorage = saveImageToInternalStorage(thumbNail)
+            Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
             binding?.ivImage?.setImageBitmap(thumbNail)
-            // Do something with the imageBitmap, such as displaying it in an ImageView
+        }else if(requestCode == GALLERY && resultCode == RESULT_OK){
+            if(data != null){
+                val contentUri = data.data
+                try{
+                    val selectedImageBitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
+
+                    val saveImageToInternalStorage = saveImageToInternalStorage(selectedImageBitmap)
+                    Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
+                    binding?.ivImage?.setImageBitmap((selectedImageBitmap))
+                }catch(e: IOException){
+                    e.printStackTrace()
+                    Toast.makeText(this@AddPlaceActivity,"Failed to load the Image from Gallery", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 }
