@@ -22,7 +22,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.udemycourses.myplaces.database.DatabaseHandler
 import com.udemycourses.myplaces.databinding.ActivityAddPlaceBinding
+import com.udemycourses.myplaces.models.MyPlaceModel
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -35,6 +37,9 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
     private var binding: ActivityAddPlaceBinding? = null
     private val cal = Calendar.getInstance()
     private lateinit var dateSetListener: DatePickerDialog.OnDateSetListener
+    private var saveImageToInternalStorage : Uri? = null
+    private var mLatitude : Double = 0.0
+    private var mLongitude : Double = 0.0
 
     companion object{
         private const val CAMERA_PERMISSION_CODE = 1
@@ -98,7 +103,7 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             }
         }
 
-
+    //ON CREATE
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -117,8 +122,11 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             cal.set(Calendar.DAY_OF_MONTH, dayOfMonth)
             updateDateInView()
         }
+        updateDateInView()
         binding?.etDate?.setOnClickListener(this)
         binding?.tvAddImage?.setOnClickListener(this)
+        binding?.btnSave?.setOnClickListener (this)
+
     }
 
     override fun onClick(v: View?) {
@@ -148,6 +156,39 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                     }
                 }.show()
             }
+            binding!!.btnSave.id -> {
+                when{
+                    binding?.etTitle?.text.isNullOrEmpty() -> {
+                        Toast.makeText(this@AddPlaceActivity,"Please set the place title", Toast.LENGTH_SHORT).show()
+                    }
+                    binding?.etDescription?.text.isNullOrEmpty() -> {
+                        Toast.makeText(this@AddPlaceActivity,"Please give a place description", Toast.LENGTH_SHORT).show()
+                    }
+                    binding?.etLocation?.text.isNullOrEmpty() -> {
+                        Toast.makeText(this@AddPlaceActivity,"Please provide a location", Toast.LENGTH_SHORT).show()
+                    }
+                    saveImageToInternalStorage == null -> {
+                        Toast.makeText(this@AddPlaceActivity,"Please set a proper place image first", Toast.LENGTH_SHORT).show()
+                    }else -> {
+                        val myPlaceModel = MyPlaceModel(
+                            0,
+                            binding?.etTitle?.text.toString(),
+                            saveImageToInternalStorage.toString(),
+                            binding?.etDescription?.text.toString(),
+                            binding?.etDate?.text.toString(),
+                            binding?.etLocation?.text.toString(),
+                            mLatitude,
+                            mLongitude)
+                        val dbHandler = DatabaseHandler(this)
+                        val addMyPlace = dbHandler.addMyPlace(myPlaceModel)
+                        if(addMyPlace > 0 ){
+                            Toast.makeText(this@AddPlaceActivity,"The MyPlace details are inserted successfully!", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                    }
+                }
+            }
+
         }
     }
 
@@ -295,8 +336,10 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
             val thumbNail : Bitmap = data!!.extras?.get("data") as Bitmap
-            val saveImageToInternalStorage = saveImageToInternalStorage(thumbNail)
+
+            saveImageToInternalStorage = saveImageToInternalStorage(thumbNail)
             Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
+
             binding?.ivImage?.setImageBitmap(thumbNail)
         }else if(requestCode == GALLERY && resultCode == RESULT_OK){
             if(data != null){
@@ -304,9 +347,11 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                 try{
                     val selectedImageBitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
 
-                    val saveImageToInternalStorage = saveImageToInternalStorage(selectedImageBitmap)
+                    saveImageToInternalStorage = saveImageToInternalStorage(selectedImageBitmap)
                     Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
+
                     binding?.ivImage?.setImageBitmap((selectedImageBitmap))
+
                 }catch(e: IOException){
                     e.printStackTrace()
                     Toast.makeText(this@AddPlaceActivity,"Failed to load the Image from Gallery", Toast.LENGTH_SHORT).show()
