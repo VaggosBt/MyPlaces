@@ -17,6 +17,7 @@ import com.udemycourses.myplaces.adapters.MyPlacesAdapter
 import com.udemycourses.myplaces.database.DatabaseHandler
 import com.udemycourses.myplaces.databinding.ActivityMainBinding
 import com.udemycourses.myplaces.models.MyPlaceModel
+import com.udemycourses.myplaces.utils.SwipeToDeleteCallback
 import com.udemycourses.myplaces.utils.SwipeToEditCallback
 
 class MainActivity : AppCompatActivity() {
@@ -84,6 +85,20 @@ class MainActivity : AppCompatActivity() {
 
         val editItemTouchHelper  = ItemTouchHelper(editsSwipeHandler)
         editItemTouchHelper.attachToRecyclerView(binding?.rvMyPlacesList)
+
+        val deleteSwipeHandler = object : SwipeToDeleteCallback(this){
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val adapter = binding?.rvMyPlacesList?.adapter as MyPlacesAdapter
+
+                adapter.removeAt(viewHolder.adapterPosition)
+
+                getMyPlacesListFromLocalDB()
+            }
+
+        }
+
+        val deleteItemTouchHelper  = ItemTouchHelper(deleteSwipeHandler)
+        deleteItemTouchHelper.attachToRecyclerView(binding?.rvMyPlacesList)
     }
 
     private fun getMyPlacesListFromLocalDB(){

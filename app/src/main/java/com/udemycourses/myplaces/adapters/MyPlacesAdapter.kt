@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.udemycourses.myplaces.R
 import com.udemycourses.myplaces.activities.AddPlaceActivity
 import com.udemycourses.myplaces.activities.MainActivity
+import com.udemycourses.myplaces.database.DatabaseHandler
 import com.udemycourses.myplaces.databinding.ItemMyPlaceBinding
 import com.udemycourses.myplaces.models.MyPlaceModel
 
@@ -46,6 +47,16 @@ open class MyPlacesAdapter (
                     onClickListener!!.onClick(position,model)
                 }
             }
+        }
+    }
+
+    fun removeAt(position: Int){
+        val dbHanlder = DatabaseHandler(context)
+        val isDeleted = dbHanlder.deleteMyPlace(list[position])
+
+        if(isDeleted > 0 ) {
+            list.removeAt(position)
+            notifyItemRemoved(position)
         }
     }
 
