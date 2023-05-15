@@ -7,6 +7,7 @@ import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.ActivityResultLauncher
 import androidx.recyclerview.widget.RecyclerView
 import com.udemycourses.myplaces.R
 import com.udemycourses.myplaces.activities.AddPlaceActivity
@@ -16,10 +17,10 @@ import com.udemycourses.myplaces.models.MyPlaceModel
 
 open class MyPlacesAdapter (
     private val context: Context,
-    private var list: ArrayList<MyPlaceModel>
+    private var list: ArrayList<MyPlaceModel>,
+    private var onClickListener : OnClickListener? = null
         ): RecyclerView.Adapter<RecyclerView.ViewHolder>(){
 
-    private var onClickListener : OnClickListener? = null
 
     override fun onCreateViewHolder ( parent : ViewGroup, viewType : Int ) : ViewHolder {
         return ViewHolder ( ItemMyPlaceBinding.inflate (

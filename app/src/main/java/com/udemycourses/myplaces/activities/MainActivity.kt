@@ -1,12 +1,16 @@
 package com.udemycourses.myplaces.activities
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.udemycourses.myplaces.adapters.MyPlacesAdapter
@@ -25,9 +29,14 @@ class MainActivity : AppCompatActivity() {
 
         val startForResult =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                Log.e("START FOR RESULT", "START FOR RESULT ENTERED")
                 if (result.resultCode == Activity.RESULT_OK) {
+                    Log.e("RESULT CODE", result.resultCode.toString())
+                    Log.e("RESULT CODE IF", (result.resultCode == Activity.RESULT_OK).toString())
                     getMyPlacesListFromLocalDB()
                 } else {
+                    Log.e("RESULT CODE", result.resultCode.toString())
+                    Log.e("RESULT CODE IF", (result.resultCode == Activity.RESULT_OK).toString())
                     Log.e("Activity", "Cancelled or Back Pressed")
                 }
             }
@@ -72,6 +81,9 @@ class MainActivity : AppCompatActivity() {
             }
 
         }
+
+        val editItemTouchHelper  = ItemTouchHelper(editsSwipeHandler)
+        editItemTouchHelper.attachToRecyclerView(binding?.rvMyPlacesList)
     }
 
     private fun getMyPlacesListFromLocalDB(){
@@ -95,18 +107,24 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-  /*  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        Log.e("Activity" , "ON ACTIVITY RESULT CALLED")
         super.onActivityResult(requestCode, resultCode, data)
-        if(resultCode == ADD_PLACE_ACTIVITY_REQUEST_CODE){
+        Log.e("Activity" , resultCode.toString())
+        if(requestCode == ADD_PLACE_ACTIVITY_REQUEST_CODE){
+
             if(resultCode == Activity.RESULT_OK){
                 getMyPlacesListFromLocalDB()
             }else{
                 Log.e("Activity" , "Cancelled or Back Pressed")
             }
         }
-    }*/
+    }
+
     companion object {
         var ADD_PLACE_ACTIVITY_REQUEST_CODE = 123
         var EXTRA_PLACE_DETAILS = "extra_place_details"
+
+
     }
 }

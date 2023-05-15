@@ -65,6 +65,24 @@ class DatabaseHandler (context : Context) : SQLiteOpenHelper(context, DATABASE_N
         db.close()
         return result
     }
+    fun updateMyPlace(myPlace : MyPlaceModel): Int {
+        val db = this.writableDatabase
+
+        val contentValues = ContentValues()
+        contentValues.put(KEY_TITLE,myPlace.title)
+        contentValues.put(KEY_IMAGE,myPlace.image)
+        contentValues.put(KEY_DESCRIPTION,myPlace.description)
+        contentValues.put(KEY_DATE, myPlace.date)
+        contentValues.put(KEY_LOCATION,myPlace.location)
+        contentValues.put(KEY_LATITUDE, myPlace.latitude)
+        contentValues.put(KEY_LONGITUDE,myPlace.longitude)
+
+        val success = db.update(TABLE_MY_PLACE, contentValues, KEY_ID + "=" + myPlace.id, null)
+
+        db.close()
+        return success
+    }
+
 
     fun getMyPlacesList(): ArrayList<MyPlaceModel>{
         val myPlacesList : ArrayList<MyPlaceModel> = ArrayList<MyPlaceModel>()

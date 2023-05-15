@@ -33,16 +33,18 @@ import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
-class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
+class AddPlaceActivity : AppCompatActivity() , View.OnClickListener {
 
     private var binding: ActivityAddPlaceBinding? = null
     private val cal = Calendar.getInstance()
     private lateinit var dateSetListener: DatePickerDialog.OnDateSetListener
-    private var saveImageToInternalStorage : Uri? = null
-    private var mLatitude : Double = 0.0
-    private var mLongitude : Double = 0.0
+    private var saveImageToInternalStorage: Uri? = null
+    private var mLatitude: Double = 0.0
+    private var mLongitude: Double = 0.0
 
-    companion object{
+    private var mMyPlaceDetails: MyPlaceModel? = null
+
+    companion object {
         private const val CAMERA_PERMISSION_CODE = 1
         private const val CAMERA_REQUEST_CODE = 2
         private const val GALLERY = 3
@@ -69,23 +71,32 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             }
         }*/
 
-    private val requestPermission : ActivityResultLauncher<Array<String>> =
+    private val requestPermission: ActivityResultLauncher<Array<String>> =
         registerForActivityResult(
-            ActivityResultContracts.RequestMultiplePermissions()){
-                permissions ->
-            permissions.entries.forEach{
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            permissions.entries.forEach {
                 val permissionName = it.key
                 val isGranted = it.value
 
-                if(isGranted){
+                if (isGranted) {
 
-                    Toast.makeText(this, "Permission granted, now you can read the storage files", Toast.LENGTH_SHORT).show()
-                    val pickIntent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                    Toast.makeText(
+                        this,
+                        "Permission granted, now you can read the storage files",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    val pickIntent =
+                        Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
                     //openGalleryLauncher.launch(pickIntent)
                     startActivityForResult(pickIntent, GALLERY)
-                }else{
-                    if(permissionName == Manifest.permission.CAMERA){
-                        Toast.makeText(this, "Oops, you just denied the permission.", Toast.LENGTH_SHORT).show()
+                } else {
+                    if (permissionName == Manifest.permission.CAMERA) {
+                        Toast.makeText(
+                            this,
+                            "Oops, you just denied the permission.",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -117,6 +128,11 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             onBackPressedDispatcher.onBackPressed()
         }
 
+        if (intent.hasExtra(MainActivity.EXTRA_PLACE_DETAILS)) {
+            mMyPlaceDetails =
+                intent.getSerializableExtra(MainActivity.EXTRA_PLACE_DETAILS) as MyPlaceModel
+        }
+
         dateSetListener = DatePickerDialog.OnDateSetListener { view, year, month, dayOfMonth ->
             cal.set(Calendar.YEAR, year)
             cal.set(Calendar.MONTH, month)
@@ -124,9 +140,26 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
             updateDateInView()
         }
         updateDateInView()
+
+        if (mMyPlaceDetails != null) {
+            supportActionBar?.title = "Edit My Place"
+            binding?.etTitle?.setText(mMyPlaceDetails!!.title)
+            binding?.etDescription?.setText(mMyPlaceDetails!!.description)
+            binding?.etDate?.setText(mMyPlaceDetails!!.date)
+            binding?.etLocation?.setText(mMyPlaceDetails!!.location)
+
+            mLatitude = mMyPlaceDetails!!.latitude
+            mLongitude = mMyPlaceDetails!!.longitude
+
+            saveImageToInternalStorage = (Uri.parse(mMyPlaceDetails!!.image))
+            binding?.ivImage?.setImageURI(saveImageToInternalStorage)
+            binding?.btnSave?.text = "UPDATE"
+
+        }
+
         binding?.etDate?.setOnClickListener(this)
         binding?.tvAddImage?.setOnClickListener(this)
-        binding?.btnSave?.setOnClickListener (this)
+        binding?.btnSave?.setOnClickListener(this)
 
     }
 
@@ -158,208 +191,246 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                 }.show()
             }
             binding!!.btnSave.id -> {
-                when{
+                when {
                     binding?.etTitle?.text.isNullOrEmpty() -> {
-                        Toast.makeText(this@AddPlaceActivity,"Please set the place title", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AddPlaceActivity,
+                            "Please set the place title",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     binding?.etDescription?.text.isNullOrEmpty() -> {
-                        Toast.makeText(this@AddPlaceActivity,"Please give a place description", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AddPlaceActivity,
+                            "Please give a place description",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     binding?.etLocation?.text.isNullOrEmpty() -> {
-                        Toast.makeText(this@AddPlaceActivity,"Please provide a location", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@AddPlaceActivity,
+                            "Please provide a location",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                     saveImageToInternalStorage == null -> {
-                        Toast.makeText(this@AddPlaceActivity,"Please set a proper place image first", Toast.LENGTH_SHORT).show()
-                    }else -> {
+                        Toast.makeText(
+                            this@AddPlaceActivity,
+                            "Please set a proper place image first",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                    else -> {
                         val myPlaceModel = MyPlaceModel(
-                            0,
+                            if (mMyPlaceDetails == null) 0 else mMyPlaceDetails!!.id,
                             binding?.etTitle?.text.toString(),
                             saveImageToInternalStorage.toString(),
                             binding?.etDescription?.text.toString(),
                             binding?.etDate?.text.toString(),
                             binding?.etLocation?.text.toString(),
                             mLatitude,
-                            mLongitude)
+                            mLongitude
+                        )
                         val dbHandler = DatabaseHandler(this)
-                        val addMyPlace = dbHandler.addMyPlace(myPlaceModel)
-                        if(addMyPlace > 0 ){
 
-                            setResult(Activity.RESULT_OK)
+                        if (mMyPlaceDetails == null) {
+                            val addMyPlace = dbHandler.addMyPlace(myPlaceModel)
+                            Log.e("ADD RESULT", addMyPlace.toString())
+                            if (addMyPlace > 0) {
+                                setResult(Activity.RESULT_OK)
 
-                            finish()
+                            }
+                        } else {
+                            val updateMyPlace = dbHandler.updateMyPlace(myPlaceModel)
+                            Log.e("UPDATE RESULT", updateMyPlace.toString())
+                            if (updateMyPlace > 0) {
+                                setResult(Activity.RESULT_OK)
+
+                            }
                         }
+                        finish()
                     }
                 }
-            }
 
+            }
         }
     }
 
-    private fun choosePhotoFromGallery() {
+        private fun choosePhotoFromGallery() {
 
-        requestStoragePermission()
+            requestStoragePermission()
 
-    }
+        }
 
-    private fun capturePhotoFromCamera(){
-        //Toast.makeText(this@AddPlaceActivity,"Camera selection coming soon...",Toast.LENGTH_SHORT).show()
-        requestCameraPermission()
-    }
+        private fun capturePhotoFromCamera() {
+            //Toast.makeText(this@AddPlaceActivity,"Camera selection coming soon...",Toast.LENGTH_SHORT).show()
+            requestCameraPermission()
+        }
 
 
-    private fun updateDateInView() {
-        val myFormat = "dd.MM.yyyy"
-        val sdf = SimpleDateFormat(myFormat, Locale.getDefault())
-        binding?.etDate?.setText(sdf.format(cal.time).toString())
-    }
+        private fun updateDateInView() {
+            val myFormat = "dd.MM.yyyy"
+            val sdf = SimpleDateFormat(myFormat, Locale.getDefault())
+            binding?.etDate?.setText(sdf.format(cal.time).toString())
+        }
 
-    private fun requestStoragePermission() {
-        // for android Android 11 or higher
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (Environment.isExternalStorageManager()) {
-                // Permission already granted
-                val pickIntent =
-                    Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-               //openGalleryLauncher.launch(pickIntent)
-                startActivityForResult(pickIntent, GALLERY)
+        private fun requestStoragePermission() {
+            // for android Android 11 or higher
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (Environment.isExternalStorageManager()) {
+                    // Permission already granted
+                    val pickIntent =
+                        Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                    //openGalleryLauncher.launch(pickIntent)
+                    startActivityForResult(pickIntent, GALLERY)
+                } else {
+                    // Permission not granted, request it
+                    val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                    val uri = Uri.fromParts("package", packageName, null)
+                    intent.data = uri
+                    startActivity(intent)
+                    Toast.makeText(
+                        this,
+                        "Please grant permission to access external storage.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             } else {
-                // Permission not granted, request it
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
-                val uri = Uri.fromParts("package", packageName, null)
-                intent.data = uri
-                startActivity(intent)
-                Toast.makeText(
-                    this,
-                    "Please grant permission to access external storage.",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        } else {
-            // for Android 10 or lower, request the permission
-            val permissions: Array<String>
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                permissions = arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
-            } else {
-                permissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
+                // for Android 10 or lower, request the permission
+                val permissions: Array<String>
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    permissions = arrayOf(
+                        Manifest.permission.READ_EXTERNAL_STORAGE,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                } else {
+                    permissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+                }
 
-            if (ActivityCompat.shouldShowRequestPermissionRationale(
+                if (ActivityCompat.shouldShowRequestPermissionRationale(
+                        this,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    ) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(
+                        this,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                ) {
+                    showRationaleDialog(
+                        "Drawing App",
+                        "Drawing App needs to access your external storage"
+                    )
+                } else {
+                    requestPermission.launch(permissions)
+                }
+
+
+            }
+        }
+
+        private fun showRationaleDialog(
+            title: String,
+            message: String,
+        ) {
+            val builder: AlertDialog.Builder = AlertDialog.Builder(this)
+            builder.setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("Cancel") { dialog, _ ->
+                    dialog.dismiss()
+                }
+            builder.create().show()
+        }
+
+        private fun requestCameraPermission() {
+            when {
+                // Check if permission is already granted
+                ContextCompat.checkSelfPermission(
                     this,
-                    Manifest.permission.READ_EXTERNAL_STORAGE
-                ) ||
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    // Permission already granted, proceed with camera operation
+                    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                    startActivityForResult(intent, CAMERA_REQUEST_CODE)
+                }
+                // Show rationale if permission was previously denied by user
                 ActivityCompat.shouldShowRequestPermissionRationale(
                     this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                )
-            ) {
-                showRationaleDialog(
-                    "Drawing App",
-                    "Drawing App needs to access your external storage"
-                )
-            } else {
-                requestPermission.launch(permissions)
+                    Manifest.permission.CAMERA
+                ) -> {
+                    AlertDialog.Builder(this)
+                        .setTitle("Camera Permission")
+                        .setMessage("This app requires camera permission to take pictures.")
+                        .setPositiveButton("OK") { _, _ ->
+                            requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                        .setNegativeButton("Cancel") { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                        .create()
+                        .show()
+                }
+                else -> {
+                    // Request permission if it was never requested before
+                    requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                }
             }
-
-
         }
-    }
-    private fun showRationaleDialog(
-        title: String,
-        message: String,
-    ){
-        val builder: AlertDialog.Builder = AlertDialog.Builder(this)
-        builder.setTitle(title)
-            .setMessage(message)
-            .setPositiveButton("Cancel"){dialog, _->
-                dialog.dismiss()
-            }
-        builder.create().show()
-    }
 
-    private fun requestCameraPermission() {
-        when {
-            // Check if permission is already granted
-            ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED -> {
-                // Permission already granted, proceed with camera operation
-               val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                startActivityForResult(intent, CAMERA_REQUEST_CODE)
+
+        private fun saveImageToInternalStorage(bitmap: Bitmap): Uri {
+            val wrapper = ContextWrapper(applicationContext)
+            var file = wrapper.getDir(IMAGE_DIRECTORY, Context.MODE_PRIVATE)
+            //whole directory of file
+            file = File(file, "${UUID.randomUUID()}.jpg")
+
+            try {
+                val outStream: OutputStream = FileOutputStream(file)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream)
+                outStream.flush()
+                outStream.close()
+
+            } catch (e: IOException) {
+                e.printStackTrace()
+                Toast.makeText(
+                    this@AddPlaceActivity,
+                    "Something went wrong while saving the file",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-            // Show rationale if permission was previously denied by user
-            ActivityCompat.shouldShowRequestPermissionRationale(
-                this,
-                Manifest.permission.CAMERA
-            ) -> {
-                AlertDialog.Builder(this)
-                    .setTitle("Camera Permission")
-                    .setMessage("This app requires camera permission to take pictures.")
-                    .setPositiveButton("OK") { _, _ ->
-                        requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            return Uri.parse(file.absolutePath)
+        }
+
+        //method to receive the photo taken from the camera intent
+        override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+            super.onActivityResult(requestCode, resultCode, data)
+            if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
+                val thumbNail: Bitmap = data!!.extras?.get("data") as Bitmap
+
+                saveImageToInternalStorage = saveImageToInternalStorage(thumbNail)
+                Log.e("Saved Image", "Path : $saveImageToInternalStorage")
+
+                binding?.ivImage?.setImageBitmap(thumbNail)
+            } else if (requestCode == GALLERY && resultCode == RESULT_OK) {
+                if (data != null) {
+                    val contentUri = data.data
+                    try {
+                        val selectedImageBitmap =
+                            MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
+
+                        saveImageToInternalStorage = saveImageToInternalStorage(selectedImageBitmap)
+                        Log.e("Saved Image", "Path : $saveImageToInternalStorage")
+
+                        binding?.ivImage?.setImageBitmap((selectedImageBitmap))
+
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                        Toast.makeText(
+                            this@AddPlaceActivity,
+                            "Failed to load the Image from Gallery",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                    .setNegativeButton("Cancel") { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    .create()
-                    .show()
-            }
-            else -> {
-                // Request permission if it was never requested before
-                requestCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }
-    }
-
-
-    private fun saveImageToInternalStorage(bitmap: Bitmap): Uri{
-        val wrapper = ContextWrapper(applicationContext)
-        var file = wrapper.getDir(IMAGE_DIRECTORY, Context.MODE_PRIVATE)
-        //whole directory of file
-        file = File(file,"${UUID.randomUUID()}.jpg")
-
-        try{
-            val outStream : OutputStream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outStream)
-            outStream.flush()
-            outStream.close()
-
-        }catch(e: IOException){
-            e.printStackTrace()
-            Toast.makeText(this@AddPlaceActivity,"Something went wrong while saving the file", Toast.LENGTH_SHORT).show()
-        }
-        return Uri.parse(file.absolutePath)
-    }
-
-    //method to receive the photo taken from the camera intent
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == CAMERA_REQUEST_CODE && resultCode == RESULT_OK) {
-            val thumbNail : Bitmap = data!!.extras?.get("data") as Bitmap
-
-            saveImageToInternalStorage = saveImageToInternalStorage(thumbNail)
-            Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
-
-            binding?.ivImage?.setImageBitmap(thumbNail)
-        }else if(requestCode == GALLERY && resultCode == RESULT_OK){
-            if(data != null){
-                val contentUri = data.data
-                try{
-                    val selectedImageBitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, contentUri)
-
-                    saveImageToInternalStorage = saveImageToInternalStorage(selectedImageBitmap)
-                    Log.e("Saved Image" , "Path : $saveImageToInternalStorage")
-
-                    binding?.ivImage?.setImageBitmap((selectedImageBitmap))
-
-                }catch(e: IOException){
-                    e.printStackTrace()
-                    Toast.makeText(this@AddPlaceActivity,"Failed to load the Image from Gallery", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
-}
