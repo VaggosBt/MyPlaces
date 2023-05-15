@@ -1,5 +1,7 @@
 package com.udemycourses.myplaces.models
 
+import java.io.Serializable
+
 data class MyPlaceModel(
     val id: Int ,
     val title : String ,
@@ -10,4 +12,4 @@ data class MyPlaceModel(
     val latitude : Double,
     val longitude : Double
 
-)
+): Serializable

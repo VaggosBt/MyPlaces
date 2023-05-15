@@ -1,6 +1,7 @@
 package com.udemycourses.myplaces.activities
 
 import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Context
@@ -182,7 +183,9 @@ class AddPlaceActivity : AppCompatActivity() , View.OnClickListener{
                         val dbHandler = DatabaseHandler(this)
                         val addMyPlace = dbHandler.addMyPlace(myPlaceModel)
                         if(addMyPlace > 0 ){
-                            Toast.makeText(this@AddPlaceActivity,"The MyPlace details are inserted successfully!", Toast.LENGTH_SHORT).show()
+
+                            setResult(Activity.RESULT_OK)
+
                             finish()
                         }
                     }
